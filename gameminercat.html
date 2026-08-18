@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐱 Miner Cat - Game Tambang Kucing</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Press Start 2P', monospace;
+    background: #1a1a2e;
+    color: #fff;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #16213e, #0f3460);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 4px solid #e94560;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .header h1 {
+    font-size: 1.2em;
+    color: #e94560;
+    text-shadow: 2px 2px #000;
+  }
+
+  .stats {
+    display: flex;
+    gap: 20px;
+    font-size: 0.7em;
+    flex-wrap: wrap;
+  }
+
+  .stat-box {
+    background: rgba(0,0,0,0.4);
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 2px solid #533483;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stat-box .icon { font-size: 1.3em; }
+  .stat-box .value { color: #ffd700; }
+
+  /* MAIN LAYOUT */
+  .game-container {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    gap: 0;
+    min-height: calc(100vh - 70px);
+  }
+
+  @media (max-width: 900px) {
+    .game-container {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* LEFT PANEL - Inventory */
+  .left-panel {
+    background: linear-gradient(180deg, #16213e, #1a1a2e);
+    padding: 15px;
+    border-right: 3px solid #533483;
+    overflow-y: auto;
+    max-height: calc(100vh - 70px);
+  }
+
+  .panel-title {
+    font-size: 0.8em;
+    color: #e94560;
+    margin-bottom: 12px;
+    text-align: center;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #533483;
+  }
+
+  .inventory-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .inv-item {
+    background: rgba(0,0,0,0.5);
+    border: 2px solid #333;
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: default;
+  }
+
+  .inv-item:hover { border-color: #e94560; transform: scale(1.05); }
+  .inv-item .block-icon { font-size: 1.8em; }
+  .inv-item .block-name { font-size: 0.5em; color: #aaa; margin: 4px 0; }
+  .inv-item .block-count { font-size: 0.7em; color: #ffd700; }
+
+  .sell-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.7em;
+    background: linear-gradient(135deg, #e94560, #c23152);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-shadow: 1px 1px #000;
+  }
+
+  .sell-btn:hover { transform: scale(1.03); box-shadow: 0 0 20px rgba(233,69,96,0.5); }
+  .sell-btn:active { transform: scale(0.97); }
+
+  /* CENTER - Mine Area */
+  .center-panel {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .cat-display {
+    font-size: 4em;
+    margin: 10px 0;
+    animation: bounce 2s infinite;
+    filter: drop-shadow(0 0 10px rgba(255,215,0,0.3));
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .depth-bar {
+    width: 100%;
+    max-width: 500px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 10px;
+    padding: 8px 15px;
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.65em;
+    border: 2px solid #533483;
+  }
+
+  .depth-bar .depth-val { color: #00ff88; }
+
+  .mine-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    max-width: 500px;
+    width: 100%;
+    margin: 10px 0;
+  }
+
+  .mine-block {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8em;
+    position: relative;
+    transition: all 0.15s;
+    border: 3px solid rgba(255,255,255,0.1);
+    user-select: none;
+    overflow: hidden;
+  }
+
+  .mine-block:hover { transform: scale(1.1); z-index: 2; }
+  .mine-block:active { transform: scale(0.9); }
+
+  .mine-block .hp-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background: #00ff88;
+    transition: width 0.2s;
+    border-radius: 0 0 5px 5px;
+  }
+
+  .mine-block.mined {
+    animation: mineAnim 0.4s forwards;
+    pointer-events: none;
+  }
+
+  @keyframes mineAnim {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3) rotate(10deg); opacity: 0.5; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+
+  .mine-block.spawning {
+    animation: spawnAnim 0.4s forwards;
+  }
+
+  @keyframes spawnAnim {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .block-dirt { background: linear-gradient(135deg, #8B6914, #6B4F12); }
+  .block-stone { background: linear-gradient(135deg, #888, #666); }
+  .block-coal { background: linear-gradient(135deg, #444, #222); }
+  .block-iron { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); }
+  .block-gold { background: linear-gradient(135deg, #FFD700, #DAA520); }
+  .block-diamond { background: linear-gradient(135deg, #00CED1, #008B8B); }
+  .block-emerald { background: linear-gradient(135deg, #50C878, #228B22); }
+  .block-ruby { background: linear-gradient(135deg, #E0115F, #8B0000); }
+  .block-obsidian { background: linear-gradient(135deg, #2d1b4e, #1a0a2e); }
+
+  .block-label {
+    font-size: 0.3em;
+    color: #fff;
+    text-shadow: 1px 1px #000;
+    margin-top: 2px;
+  }
+
+  /* Floating damage text */
+  .float-text {
+    position: absolute;
+    font-size: 0.6em;
+    color: #ff4444;
+    font-family: 'Press Start 2P', monospace;
+    pointer-events: none;
+    animation: floatUp 0.8s forwards;
+    z-index: 100;
+    text-shadow: 1px 1px #000;
+  }
+
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-40px); }
+  }
+
+  /* RIGHT PANEL - Shop */
+  .right-panel {
+    background: linear-gradient(180deg, #16213e, #1a1a2e);
+    padding: 15px;
+    border-left: 3px solid #533483;
+    overflow-y: auto;
+    max-height: calc(100vh - 70px);
+  }
+
+  .shop-item {
+    background: rgba(0,0,0,0.4);
+    border: 2px solid #333;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+    transition: all 0.3s;
+  }
+
+  .shop-item:hover { border-color: #ffd700; }
+
+  .shop-item .shop-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .shop-item .shop-icon { font-size: 1.5em; }
+  .shop-item .shop-name { font-size: 0.6em; color: #fff; }
+  .shop-item .shop-level { font-size: 0.5em; color: #aaa; margin-left: auto; }
+
+  .shop-item .shop-desc { font-size: 0.45em; color: #888; margin-bottom: 8px; line-height: 1.6; }
+
+  .shop-item .shop-btn {
+    width: 100%;
+    padding: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.55em;
+    background: linear-gradient(135deg, #533483, #3b1f6e);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .shop-item .shop-btn:hover { background: linear-gradient(135deg, #e94560, #c23152); }
+  .shop-item .shop-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* PARTICLES */
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    font-size: 1.2em;
+    animation: particleFall 1s forwards;
+    z-index: 999;
+  }
+
+  @keyframes particleFall {
+    0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+    100% { opacity: 0; transform: translateY(80px) rotate(360deg); }
+  }
+
+  /* TOAST NOTIFICATION */
+  .toast {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #533483, #e94560);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.65em;
+    z-index: 1000;
+    animation: toastAnim 2s forwards;
+    text-shadow: 1px 1px #000;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+
+  @keyframes toastAnim {
+    0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  }
+
+  /* LEVEL UP EFFECT */
+  .levelup-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeInOut 2s forwards;
+  }
+
+  .levelup-text {
+    font-size: 2em;
+    color: #ffd700;
+    text-shadow: 0 0 20px #ffd700, 0 0 40px #e94560;
+    animation: levelPulse 0.5s infinite alternate;
+  }
+
+  @keyframes levelPulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.1); }
+  }
+
+  @keyframes fadeInOut {
+    0% { opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* COMBO */
+  .combo-display {
+    font-size: 0.8em;
+    color: #ff6b35;
+    margin: 5px 0;
+    min-height: 20px;
+    text-shadow: 0 0 10px rgba(255,107,53,0.5);
+  }
+
+  /* PROGRESS BAR for auto miner */
+  .auto-progress {
+    width: 100%;
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .auto-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #e94560, #ffd700);
+    transition: width 0.1s linear;
+    border-radius: 3px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: #1a1a2e; }
+  ::-webkit-scrollbar-thumb { background: #533483; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #e94560; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .left-panel, .right-panel {
+      border: none;
+      border-bottom: 3px solid #533483;
+      max-height: none;
+    }
+    .mine-grid { grid-template-columns: repeat(5, 1fr); }
+    .header h1 { font-size: 0.9em; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>🐱 MINER CAT</h1>
+  <div class="stats">
+    <div class="stat-box">
+      <span class="icon">💰</span>
+      <span>Koin: </span>
+      <span class="value" id="coins">0</span>
+    </div>
+    <div class="stat-box">
+      <span class="icon">⛏️</span>
+      <span>Daya: </span>
+      <span class="value" id="power">1</span>
+    </div>
+    <div class="stat-box">
+      <span class="icon">📊</span>
+      <span>Level: </span>
+      <span class="value" id="level">1</span>
+    </div>
+    <div class="stat-box">
+      <span class="icon">⭐</span>
+      <span>XP: </span>
+      <span class="value" id="xp">0</span>/<span id="xpNeeded">100</span>
+    </div>
+  </div>
+</div>
+
+<!-- GAME CONTAINER -->
+<div class="game-container">
+
+  <!-- LEFT: Inventory -->
+  <div class="left-panel">
+    <div class="panel-title"> INVENTORI</div>
+    <div class="inventory-grid" id="inventory">
+      <!-- Filled by JS -->
+    </div>
+    <button class="sell-btn" onclick="sellAll()">💰 JUAL SEMUA</button>
+    <div style="margin-top:15px;">
+      <div class="panel-title">📋 STATISTIK</div>
+      <div style="font-size:0.55em; color:#aaa; line-height:2;">
+        <div>Total Ditambang: <span id="totalMined" style="color:#ffd700">0</span></div>
+        <div>Total Koin: <span id="totalCoins" style="color:#ffd700">0</span></div>
+        <div>Kedalaman Maks: <span id="maxDepth" style="color:#00ff88">1</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: Mine -->
+  <div class="center-panel">
+    <div class="cat-display" id="catDisplay">🐱</div>
+    <div class="combo-display" id="comboDisplay"></div>
+
+    <div class="depth-bar">
+      <span>️ Kedalaman: <span class="depth-val" id="depthDisplay">1</span>m</span>
+      <span id="depthHint" style="font-size:0.8em; color:#aaa;">Klik blok untuk menambang!</span>
+    </div>
+
+    <div class="mine-grid" id="mineGrid">
+      <!-- Filled by JS -->
+    </div>
+
+    <div id="autoMinerSection" style="display:none; width:100%; max-width:500px; margin-top:10px;">
+      <div style="font-size:0.6em; color:#aaa; text-align:center;">🤖 Auto Miner</div>
+      <div class="auto-progress">
+        <div class="auto-progress-fill" id="autoProgress" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Shop -->
+  <div class="right-panel">
+    <div class="panel-title">🏪 TOKO UPGRADE</div>
+    <div id="shopContainer">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============ GAME STATE ============
+const BLOCK_TYPES = [
+  { name: 'Tanah',  icon: '🟫', cls: 'block-dirt',    hp: 1,  value: 1,   xp: 1,   minDepth: 1,  rarity: 30 },
+  { name: 'Batu',   icon: '', cls: 'block-stone',   hp: 2,  value: 2,   xp: 2,   minDepth: 1,  rarity: 25 },
+  { name: 'Batu Bara', icon: '⬛', cls: 'block-coal', hp: 3,  value: 5,   xp: 3,   minDepth: 2,  rarity: 18 },
+  { name: 'Besi',   icon: '️', cls: 'block-iron',    hp: 5,  value: 10,  xp: 5,   minDepth: 3,  rarity: 12 },
+  { name: 'Emas',   icon: '', cls: 'block-gold',    hp: 8,  value: 25,  xp: 10,  minDepth: 5,  rarity: 7  },
+  { name: 'Berlian',icon: '', cls: 'block-diamond', hp: 12, value: 50,  xp: 20,  minDepth: 7,  rarity: 4  },
+  { name: 'Zamrud', icon: '', cls: 'block-emerald', hp: 15, value: 80,  xp: 30,  minDepth: 9,  rarity: 2.5},
+  { name: 'Rubi',   icon: '❤️', cls: 'block-ruby',    hp: 20, value: 150, xp: 50,  minDepth: 12, rarity: 1  },
+  { name: 'Obsidian',icon:'', cls: 'block-obsidian',hp: 30, value: 300, xp: 100, minDepth: 15, rarity: 0.5},
+];
+
+const SHOP_ITEMS = [
+  { id: 'pickaxe', name: '️ Beliung', desc: 'Tingkatkan daya tambang +1', baseCost: 50, costMult: 1.8, maxLevel: 50 },
+  { id: 'luck', name: '🍀 Keberuntungan', desc: 'Peluang dapat blok langka +5%', baseCost: 100, costMult: 2.0, maxLevel: 20 },
+  { id: 'auto', name: '🤖 Auto Miner', desc: 'Tambang otomatis setiap detik', baseCost: 500, costMult: 2.5, maxLevel: 10 },
+  { id: 'value', name: '💎 Nilai Jual', desc: 'Harga jual blok +20%', baseCost: 200, costMult: 2.2, maxLevel: 15 },
+  { id: 'crit', name: '⚡ Critical Hit', desc: 'Peluang damage x3 +5%', baseCost: 300, costMult: 2.0, maxLevel: 15 },
+  { id: 'multi', name: '🔥 Multi Mine', desc: 'Peluang tambang 2 blok +3%', baseCost: 800, costMult: 2.5, maxLevel: 10 },
+];
+
+let state = {
+  coins: 0,
+  totalCoins: 0,
+  totalMined: 0,
+  xp: 0,
+  level: 1,
+  depth: 1,
+  maxDepth: 1,
+  power: 1,
+  inventory: {},
+  upgrades: { pickaxe: 1, luck: 0, auto: 0, value: 0, crit: 0, multi: 0 },
+  combo: 0,
+  comboTimer: null,
+  autoTimer: null,
+  autoProgress: 0,
+};
+
+// Load save
+function loadGame() {
+  try {
+    const saved = localStorage.getItem('minercat_save');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      Object.assign(state, parsed);
+    }
+  } catch(e) {}
+}
+
+function saveGame() {
+  try {
+    localStorage.setItem('minercat_save', JSON.stringify(state));
+  } catch(e) {}
+}
+
+// ============ BLOCK GENERATION ============
+function getRandomBlock() {
+  const depth = state.depth;
+  const luck = state.upgrades.luck * 5;
+  const available = BLOCK_TYPES.filter(b => b.minDepth <= depth);
+
+  // Weighted random
+  let totalWeight = 0;
+  const weights = available.map(b => {
+    let w = b.rarity;
+    if (b.minDepth >= depth - 1 && b.minDepth > 1) w += luck;
+    totalWeight += w;
+    return w;
+  });
+
+  let rand = Math.random() * totalWeight;
+  for (let i = 0; i < available.length; i++) {
+    rand -= weights[i];
+    if (rand <= 0) return available[i];
+  }
+  return available[0];
+}
+
+function createBlockElement(block, index) {
+  const el = document.createElement('div');
+  el.className = `mine-block ${block.cls} spawning`;
+  el.dataset.index = index;
+  el.dataset.hp = block.hp;
+  el.dataset.maxHp = block.hp;
+  el.dataset.blockName = block.name;
+  el.innerHTML = `
+    <span>${block.icon}</span>
+    <span class="block-label">${block.name}</span>
+    <div class="hp-bar" style="width:100%"></div>
+  `;
+  el.addEventListener('click', (e) => mineBlock(e, el, block));
+  el.addEventListener('contextmenu', (e) => { e.preventDefault(); mineBlock(e, el, block, true); });
+  return el;
+}
+
+function initGrid() {
+  const grid = document.getElementById('mineGrid');
+  grid.innerHTML = '';
+  const cols = window.innerWidth <= 900 ? 5 : 6;
+  const rows = 4;
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+  for (let i = 0; i < cols * rows; i++) {
+    const block = getRandomBlock();
+    grid.appendChild(createBlockElement(block, i));
+  }
+}
+
+// ============ MINING ============
+function mineBlock(e, el, block, isRightClick = false) {
+  if (el.classList.contains('mined')) return;
+
+  let damage = state.power;
+
+  // Critical hit
+  const critChance = state.upgrades.crit * 5;
+  let isCrit = Math.random() * 100 < critChance;
+  if (isCrit) damage *= 3;
+
+  // Multi mine
+  const multiChance = state.upgrades.multi * 3;
+  let isMulti = Math.random() * 100 < multiChance;
+
+  let currentHp = parseInt(el.dataset.hp);
+  currentHp -= damage;
+  el.dataset.hp = currentHp;
+
+  // Update HP bar
+  const hpPercent = Math.max(0, currentHp / parseInt(el.dataset.maxHp) * 100);
+  el.querySelector('.hp-bar').style.width = hpPercent + '%';
+
+  // Show damage text
+  showFloatText(e, `-${damage}${isCrit ? ' 💥' : ''}`);
+
+  // Spawn particles
+  spawnParticles(e, block.icon);
+
+  // Cat animation
+  const cat = document.getElementById('catDisplay');
+  cat.style.animation = 'none';
+  cat.offsetHeight;
+  cat.style.animation = 'bounce 0.3s';
+
+  if (currentHp <= 0) {
+    // Block mined!
+    el.classList.add('mined');
+
+    // Add to inventory
+    const bName = block.name;
+    state.inventory[bName] = (state.inventory[bName] || 0) + 1;
+    state.totalMined++;
+
+    // XP
+    addXP(block.xp);
+
+    // Combo
+    state.combo++;
+    clearTimeout(state.comboTimer);
+    state.comboTimer = setTimeout(() => { state.combo = 0; updateCombo(); }, 2000);
+    updateCombo();
+
+    // Multi mine bonus
+    if (isMulti) {
+      setTimeout(() => {
+        const bonusBlock = getRandomBlock();
+        state.inventory[bonusBlock.name] = (state.inventory[bonusBlock.name] || 0) + 1;
+        state.totalMined++;
+        addXP(bonusBlock.xp);
+        showToast(` Multi Mine! +1 ${bonusBlock.icon} ${bonusBlock.name}!`);
+      }, 200);
+    }
+
+    // Respawn after delay
+    setTimeout(() => {
+      const newBlock = getRandomBlock();
+      el.className = `mine-block ${newBlock.cls} spawning`;
+      el.dataset.hp = newBlock.hp;
+      el.dataset.maxHp = newBlock.hp;
+      el.dataset.blockName = newBlock.name;
+      el.innerHTML = `
+        <span>${newBlock.icon}</span>
+        <span class="block-label">${newBlock.name}</span>
+        <div class="hp-bar" style="width:100%"></div>
+      `;
+      el.classList.remove('mined');
+      el.style.pointerEvents = 'auto';
+    }, 500);
+
+    // Depth progression
+    if (state.totalMined % 10 === 0 && state.depth < 50) {
+      state.depth++;
+      if (state.depth > state.maxDepth) state.maxDepth = state.depth;
+      showToast(`🕳️ Kedalaman bertambah! ${state.depth}m`);
+    }
+  }
+
+  updateUI();
+  saveGame();
+}
+
+function showFloatText(e, text) {
+  const ft = document.createElement('div');
+  ft.className = 'float-text';
+  ft.textContent = text;
+  ft.style.left = (e.clientX - 20) + 'px';
+  ft.style.top = (e.clientY - 20) + 'px';
+  document.body.appendChild(ft);
+  setTimeout(() => ft.remove(), 800);
+}
+
+function spawnParticles(e, icon) {
+  for (let i = 0; i < 3; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.textContent = icon;
+    p.style.left = (e.clientX + (Math.random() - 0.5) * 40) + 'px';
+    p.style.top = (e.clientY + (Math.random() - 0.5) * 40) + 'px';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1000);
+  }
+}
+
+function updateCombo() {
+  const el = document.getElementById('comboDisplay');
+  if (state.combo > 1) {
+    el.textContent = ` COMBO x${state.combo}!`;
+  } else {
+    el.textContent = '';
+  }
+}
+
+// ============ XP & LEVEL ============
+function addXP(amount) {
+  state.xp += amount;
+  const needed = getXPNeeded();
+  while (state.xp >= needed) {
+    state.xp -= getXPNeeded();
+    state.level++;
+    state.power++;
+    showLevelUp();
+  }
+}
+
+function getXPNeeded() {
+  return Math.floor(100 * Math.pow(1.3, state.level - 1));
+}
+
+function showLevelUp() {
+  const overlay = document.createElement('div');
+  overlay.className = 'levelup-overlay';
+  overlay.innerHTML = `<div class="levelup-text">⬆️ LEVEL ${state.level}! ⬆️<br><span style="font-size:0.5em">Daya +1!</span></div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 2000);
+}
+
+// ============ SELL ============
+function sellAll() {
+  let totalValue = 0;
+  const valueMult = 1 + state.upgrades.value * 0.2;
+
+  for (const [name, count] of Object.entries(state.inventory)) {
+    if (count <= 0) continue;
+    const block = BLOCK_TYPES.find(b => b.name === name);
+    if (block) {
+      totalValue += Math.floor(block.value * count * valueMult);
+    }
+  }
+
+  if (totalValue === 0) {
+    showToast(' Inventori kosong!');
+    return;
+  }
+
+  state.coins += totalValue;
+  state.totalCoins += totalValue;
+  state.inventory = {};
+
+  showToast(`💰 Dijual semua! +${totalValue} koin!`);
+  updateUI();
+  saveGame();
+}
+
+// ============ SHOP ============
+function getUpgradeCost(item) {
+  const level = state.upgrades[item.id];
+  return Math.floor(item.baseCost * Math.pow(item.costMult, level));
+}
+
+function buyUpgrade(itemId) {
+  const item = SHOP_ITEMS.find(i => i.id === itemId);
+  if (!item) return;
+
+  const cost = getUpgradeCost(item);
+  const level = state.upgrades[itemId];
+
+  if (level >= item.maxLevel) {
+    showToast('️ Level maksimal!');
+    return;
+  }
+  if (state.coins < cost) {
+    showToast('💰 Koin tidak cukup!');
+    return;
+  }
+
+  state.coins -= cost;
+  state.upgrades[itemId]++;
+
+  // Apply effects
+  if (itemId === 'pickaxe') {
+    state.power = 1 + state.upgrades.pickaxe;
+  }
+  if (itemId === 'auto') {
+    setupAutoMiner();
+  }
+
+  showToast(`✅ ${item.name} Level ${state.upgrades[itemId]}!`);
+  updateUI();
+  saveGame();
+}
+
+function setupAutoMiner() {
+  const level = state.upgrades.auto;
+  const section = document.getElementById('autoMinerSection');
+
+  if (level > 0) {
+    section.style.display = 'block';
+    clearInterval(state.autoTimer);
+
+    const interval = Math.max(200, 1000 - level * 80);
+    state.autoProgress = 0;
+
+    state.autoTimer = setInterval(() => {
+      state.autoProgress += (100 / (interval / 50));
+      if (state.autoProgress >= 100) {
+        state.autoProgress = 0;
+        // Auto mine a random block
+        const blocks = document.querySelectorAll('.mine-block:not(.mined)');
+        if (blocks.length > 0) {
+          const randBlock = blocks[Math.floor(Math.random() * blocks.length)];
+          const index = parseInt(randBlock.dataset.index);
+          const blockName = randBlock.dataset.blockName;
+          const block = BLOCK_TYPES.find(b => b.name === blockName);
+          if (block) {
+            const fakeEvent = { clientX: randBlock.getBoundingClientRect().left + 30, clientY: randBlock.getBoundingClientRect().top + 30 };
+            mineBlock(fakeEvent, randBlock, block);
+          }
+        }
+      }
+      document.getElementById('autoProgress').style.width = state.autoProgress + '%';
+    }, 50);
+  } else {
+    section.style.display = 'none';
+    clearInterval(state.autoTimer);
+  }
+}
+
+// ============ UI UPDATE ============
+function updateUI() {
+  document.getElementById('coins').textContent = formatNumber(state.coins);
+  document.getElementById('power').textContent = state.power;
+  document.getElementById('level').textContent = state.level;
+  document.getElementById('xp').textContent = state.xp;
+  document.getElementById('xpNeeded').textContent = getXPNeeded();
+  document.getElementById('depthDisplay').textContent = state.depth;
+  document.getElementById('totalMined').textContent = formatNumber(state.totalMined);
+  document.getElementById('totalCoins').textContent = formatNumber(state.totalCoins);
+  document.getElementById('maxDepth').textContent = state.maxDepth;
+
+  // Inventory
+  const invEl = document.getElementById('inventory');
+  invEl.innerHTML = '';
+  const valueMult = 1 + state.upgrades.value * 0.2;
+
+  for (const block of BLOCK_TYPES) {
+    const count = state.inventory[block.name] || 0;
+    if (count > 0) {
+      const div = document.createElement('div');
+      div.className = 'inv-item';
+      div.innerHTML = `
+        <div class="block-icon">${block.icon}</div>
+        <div class="block-name">${block.name}</div>
+        <div class="block-count">x${count} (${Math.floor(block.value * valueMult)}💰)</div>
+      `;
+      invEl.appendChild(div);
+    }
+  }
+
+  if (invEl.children.length === 0) {
+    invEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;font-size:0.6em;color:#666;padding:20px;">Kosong</div>';
+  }
+
+  // Shop
+  const shopEl = document.getElementById('shopContainer');
+  shopEl.innerHTML = '';
+
+  for (const item of SHOP_ITEMS) {
+    const level = state.upgrades[item.id];
+    const cost = getUpgradeCost(item);
+    const canBuy = state.coins >= cost && level < item.maxLevel;
+    const isMaxed = level >= item.maxLevel;
+
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    div.innerHTML = `
+      <div class="shop-header">
+        <span class="shop-icon">${item.name.split(' ')[0]}</span>
+        <span class="shop-name">${item.name.split(' ').slice(1).join(' ')}</span>
+        <span class="shop-level">Lv.${level}/${item.maxLevel}</span>
+      </div>
+      <div class="shop-desc">${item.desc}</div>
+      <button class="shop-btn" ${!canBuy ? 'disabled' : ''} onclick="buyUpgrade('${item.id}')">
+        ${isMaxed ? '✅ MAKS' : `⬆️ Upgrade - ${formatNumber(cost)} 💰`}
+      </button>
+    `;
+    shopEl.appendChild(div);
+  }
+}
+
+function formatNumber(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+// ============ TOAST ============
+function showToast(msg) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2000);
+}
+
+// ============ KEYBOARD SHORTCUT ============
+document.addEventListener('keydown', (e) => {
+  if (e.key === 's' || e.key === 'S') sellAll();
+});
+
+// ============ INIT ============
+loadGame();
+initGrid();
+updateUI();
+setupAutoMiner();
+
+// Auto-save every 10 seconds
+setInterval(saveGame, 10000);
+
+// Handle resize
+window.addEventListener('resize', () => {
+  initGrid();
+});
+</script>
+
+</body>
+</html>
